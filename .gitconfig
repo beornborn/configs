@@ -8,3 +8,6 @@
   diff = auto
   status = auto
   branch = auto
+[user]
+	name = Oleg Gorbunov
+	email = beornborn@gmail.com
