@@ -1,0 +1,10 @@
+[alias]
+    st = status
+    ci = commit -v
+    co = checkout
+    br = branch
+
+[color]
+  diff = auto
+  status = auto
+  branch = auto
