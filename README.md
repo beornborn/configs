@@ -1,4 +1,1 @@
-linux
-=====
-
-my configuration
+dotfiles

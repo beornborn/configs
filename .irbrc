@@ -1,29 +1,13 @@
-require 'irb/completion'
-require 'irb/ext/save-history'
-
-require 'pp'
-require 'rubygems'
-
 ### IRB configuration.
-IRB.conf[:SAVE_HISTORY] = 200
-IRB.conf[:HISTORY_FILE] = "#{ENV['HOME']}/.irb/history"
 IRB.conf[:PROMPT_MODE]  = :SIMPLE
 IRB.conf[:AUTO_INDENT]  = true
 
-### Wirble
-# This adds some nice features to the IRB.  The obvious change is
-# coloring.
-# You can also use ri from the irb:
-#  >> Object.ri 'Array#map'
-begin
-  require 'wirble'
 
-  Wirble.init
-  Wirble.colorize
-rescue LoadError => err
-  warn "Unable to load Wirble: #{err} (maybe: gem install wirble)"
-end
 
+
+
+
+#------------------------------------- Load Helper Gems ------------------------
 ### What? method
 # The Object.what? method returns the method(s) that will return
 # a specific value.
@@ -55,31 +39,77 @@ rescue LoadError => err
   warn "Unable to load Awesome Print (ap): #{err} (maybe: gem install awesome_print)"
 end
 
-### Rails
-# Some features that make using irb for rails much nicer.
-if rails_env = ENV['RAILS_ENV']
-  rails_root = File.basename(Dir.pwd)
-  IRB.conf[:PROMPT] ||= {}
-  IRB.conf[:PROMPT][:RAILS] = {
-    :PROMPT_I => "#{rails_root}> ",
-    :PROMPT_S => "#{rails_root}* ",
-    :PROMPT_C => "#{rails_root}? ",
-    :RETURN   => "=> %s\n"
-  }
-  IRB.conf[:PROMPT_MODE] = :RAILS
-
-  # Called after the irb session is initialized and Rails has
-  # been loaded (props: Mike Clark).
-  IRB.conf[:IRB_RC] = Proc.new do
-    ActiveRecord::Base.logger = Logger.new(STDOUT)
-    ActiveRecord::Base.instance_eval { alias :[] :find }
-  end
+# some external services, (bitly)
+begin
+  require 'mush'
+rescue LoadError => err
+  warn "Unable to load mush: #{err} (maybe: gem install mush)"
 end
 
-## Handy shortcuts
-# Yeah, I type this too often.
-def ls
-   %x{ls}.split("\n")
+## Notify us of the version and that it is ready.
+begin
+  gemset = `rvm gemset name`
+rescue Errno::ENOENT => err
+  gemset = '-'
+  warn "Unable to run rvm: #{err} (maybe: https://rvm.io/rvm/install)"
+end
+
+gemset = 'default' if gemset.start_with? '/'
+puts "Ruby #{RUBY_VERSION} Gemset #{gemset}"
+
+
+
+
+
+#---------------------------------------------- Ruby Helpers ----------------------
+# Log to STDOUT if in Rails
+if ENV.include?('RAILS_ENV') && !Object.const_defined?('RAILS_DEFAULT_LOGGER')
+  require 'logger'
+  RAILS_DEFAULT_LOGGER = Logger.new(STDOUT)
+end
+
+# http://ozmm.org/posts/time_in_irb.html
+def time(times = 1)
+  require 'benchmark'
+  ret = nil
+  Benchmark.bm { |x| x.report { times.times { ret = yield } } }
+  ret
+end
+
+# Easily print methods local to an object's class
+module ObjectLocalMethods
+  def local_methods(include_superclasses = true)
+    (self.methods - (include_superclasses ? Object.methods : self.class.superclass.instance_methods)).sort
+  end
+
+  def ri(method = nil)
+    unless method && method =~ /^[A-Z]/ # if class isn't specified
+      klass = self.kind_of?(Class) ? name : self.class.name
+      method = [klass, method].compact.join('#')
+    end
+    puts `ri '#{method}'`
+  end
+end
+Object.send(:extend,  ObjectLocalMethods)
+Object.send(:include, ObjectLocalMethods)
+
+
+
+
+
+#-------------------------------------- IRB Helpers ---------------------
+#clear the screen
+def clear
+  system('clear')
+end
+alias :cl :clear
+
+def by(url)
+  bitly = Mush::Services::Bitly.new
+  bitly.login = "o_6mi7b7g4oc"
+  bitly.apikey = "R_acf61600030046f09ccbc29186b9a710"
+
+  bitly.shorten url
 end
 
 # reloads a file into the IRB.
@@ -98,9 +128,37 @@ def rl(file_name = nil)
   end
 end
 
-## Notify us of the version and that it is ready.
-puts "Ruby #{RUBY_VERSION}-p#{RUBY_PATCHLEVEL} (#{RUBY_RELEASE_DATE}) #{RUBY_PLATFORM}"
+# reload this .irbrc
+def ireload!
+  load __FILE__
+end
 
-# Local Variables:
-# mode: ruby
-# End:
+
+
+
+
+#------------------------------------------- History ---------------------------
+# shows last n entries of history, default 15
+def hist count = 15
+  history = Readline::HISTORY.to_a[0-count..-1]
+  history.each_with_index do |command, i|
+    puts "#{"%5d" % (history.length - i)}:   #{command}"
+  end
+  nil
+end
+
+# repeat last command, or the command with correspondent num in hist method call
+def rep i = 1
+  i += 1 # because in call moment adds new command to history array
+  history = Readline::HISTORY.to_a
+
+  command = history[history.length - i]
+  while command.start_with? 'rep'
+    i += 1
+    command = history[history.length - i]
+  end
+
+  puts "eval command => #{command}"
+  eval command unless command.start_with? 'rep'
+end
+
