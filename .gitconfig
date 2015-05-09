@@ -7,7 +7,7 @@
   ll           = log --pretty=oneline --abbrev-commit --max-count=15
   lg           = log --graph --abbrev-commit --decorate --date=relative --format=format:'%C(blue)%h%C(reset) - %C(green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(yellow)%d%C(reset)' --all
 
-  wip          = git add -u && git commit -m ...
+  wip          = !"git add -u && git commit -m ..."
   ci           = commit -v
   x            = checkout HEAD
   co           = checkout
