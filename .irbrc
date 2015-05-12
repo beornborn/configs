@@ -8,6 +8,16 @@ IRB.conf[:AUTO_INDENT]  = true
 
 
 #------------------------------------- Load Helper Gems ------------------------
+
+### benchmark-ips
+# https://github.com/evanphx/benchmark-ips
+begin
+  require 'benchmark/ips'
+rescue LoadError => err
+  puts `gem install benchmark-ips`
+  require 'benchmark/ips'
+end
+
 ### What? method
 # The Object.what? method returns the method(s) that will return
 # a specific value.
@@ -19,7 +29,8 @@ IRB.conf[:AUTO_INDENT]  = true
 begin
   require 'what_methods'
 rescue LoadError => err
-  warn "Unable to load What Methods: #{err} (maybe: gem install what_methods)"
+  puts `gem install what_methods`
+  require 'what_methods'
 end
 
 ### ap method
@@ -36,14 +47,16 @@ end
 begin
   require 'ap'
 rescue LoadError => err
-  warn "Unable to load Awesome Print (ap): #{err} (maybe: gem install awesome_print)"
+  puts `gem install awesome_print`
+  require 'ap'
 end
 
 # some external services, (bitly)
 begin
   require 'mush'
 rescue LoadError => err
-  warn "Unable to load mush: #{err} (maybe: gem install mush)"
+  puts `gem install mush`
+  require 'mush'
 end
 
 ## Notify us of the version and that it is ready.
@@ -69,11 +82,13 @@ if ENV.include?('RAILS_ENV') && !Object.const_defined?('RAILS_DEFAULT_LOGGER')
 end
 
 # http://ozmm.org/posts/time_in_irb.html
-def time(times = 1)
-  require 'benchmark'
-  ret = nil
-  Benchmark.bm { |x| x.report { times.times { ret = yield } } }
-  ret
+def time
+  Benchmark.ips do |x|
+    x.time = 5
+    x.warmup = 2
+
+    x.report("test") { yield }
+  end
 end
 
 # Easily print methods local to an object's class
@@ -129,7 +144,7 @@ def rl(file_name = nil)
 end
 
 # reload this .irbrc
-def ireload!
+def ireload
   load __FILE__
 end
 
