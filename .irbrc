@@ -91,6 +91,13 @@ def time
   end
 end
 
+def with_time
+  start = Time.now
+  res = yield
+  ap Time.now - start
+  res
+end
+
 # Easily print methods local to an object's class
 module ObjectLocalMethods
   def local_methods(include_superclasses = true)
