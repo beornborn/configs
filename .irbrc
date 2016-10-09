@@ -1,62 +1,18 @@
 ### IRB configuration.
-IRB.conf[:PROMPT_MODE]  = :SIMPLE
-IRB.conf[:AUTO_INDENT]  = true
+IRB.conf[:PROMPT_MODE] = :SIMPLE
+IRB.conf[:AUTO_INDENT] = true
 
-
-
-
-
-
-#------------------------------------- Load Helper Gems ------------------------
-
-### benchmark-ips
-# https://github.com/evanphx/benchmark-ips
-begin
-  require 'benchmark/ips'
-rescue LoadError => err
-  puts `gem install benchmark-ips`
-  require 'benchmark/ips'
-end
-
-### What? method
-# The Object.what? method returns the method(s) that will return
-# a specific value.
-# Example:
-#  >> 6.what? 7
-#  6.succ == 7
-#  6.next == 7
-#  => ["succ", "next"]
-begin
-  require 'what_methods'
-rescue LoadError => err
-  puts `gem install what_methods`
-  require 'what_methods'
-end
-
-### ap method
-# ap() is an enhanced version of pp()
-# Example:
-# >> ap (1..4).to_a
-# [
-#     [0] 1,
-#     [1] 2,
-#     [2] 3,
-#     [3] 4
-# ]
-# => nil
 begin
   require 'ap'
+  AwesomePrint.irb!
 rescue LoadError => err
-  puts `gem install awesome_print`
-  require 'ap'
+  warn "Unable to load Awesome Print (ap): #{err} (maybe: gem install awesome_print)"
 end
 
-# some external services, (bitly)
 begin
-  require 'mush'
+  require 'active_support/all'
 rescue LoadError => err
-  puts `gem install mush`
-  require 'mush'
+  warn "Unable to load activesupport/all"
 end
 
 ## Notify us of the version and that it is ready.
@@ -67,13 +23,6 @@ rescue Errno::ENOENT => err
   warn "Unable to run rvm: #{err} (maybe: https://rvm.io/rvm/install)"
 end
 
-gemset = 'default' if gemset.start_with? '/'
-puts "Ruby #{RUBY_VERSION} Gemset #{gemset}"
-
-
-
-
-
 #---------------------------------------------- Ruby Helpers ----------------------
 # Log to STDOUT if in Rails
 if ENV.include?('RAILS_ENV') && !Object.const_defined?('RAILS_DEFAULT_LOGGER')
@@ -82,41 +31,19 @@ if ENV.include?('RAILS_ENV') && !Object.const_defined?('RAILS_DEFAULT_LOGGER')
 end
 
 # http://ozmm.org/posts/time_in_irb.html
-def time
-  Benchmark.ips do |x|
-    x.time = 5
-    x.warmup = 2
-
-    x.report("test") { yield }
-  end
+def time(times = 1)
+  require 'benchmark'
+  ret = nil
+  Benchmark.bm { |x| x.report { times.times { ret = yield } } }
+  ret
 end
 
 def with_time
-  start = Time.now
-  res = yield
-  ap Time.now - start
-  res
+  time_now = Time.now
+  block_result = yield
+  ap "---------------> Time for operation: #{Time.now - time_now}"
+  block_result
 end
-
-# Easily print methods local to an object's class
-module ObjectLocalMethods
-  def local_methods(include_superclasses = true)
-    (self.methods - (include_superclasses ? Object.methods : self.class.superclass.instance_methods)).sort
-  end
-
-  def ri(method = nil)
-    unless method && method =~ /^[A-Z]/ # if class isn't specified
-      klass = self.kind_of?(Class) ? name : self.class.name
-      method = [klass, method].compact.join('#')
-    end
-    puts `ri '#{method}'`
-  end
-end
-Object.send(:extend,  ObjectLocalMethods)
-Object.send(:include, ObjectLocalMethods)
-
-
-
 
 
 #-------------------------------------- IRB Helpers ---------------------
@@ -126,13 +53,6 @@ def clear
 end
 alias :cl :clear
 
-def by(url)
-  bitly = Mush::Services::Bitly.new
-  bitly.login = "o_6mi7b7g4oc"
-  bitly.apikey = "R_acf61600030046f09ccbc29186b9a710"
-
-  bitly.shorten url
-end
 
 # reloads a file into the IRB.
 # from http://themomorohoax.com/2009/03/27/irb-tip-load-files-faster
@@ -151,12 +71,9 @@ def rl(file_name = nil)
 end
 
 # reload this .irbrc
-def ireload
+def ireload!
   load __FILE__
 end
-
-
-
 
 
 #------------------------------------------- History ---------------------------
